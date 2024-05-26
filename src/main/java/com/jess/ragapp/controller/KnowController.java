@@ -19,8 +19,8 @@ public class KnowController {
     @Autowired
     Assistant assistant;
 
-    @PutMapping("/add")
-    public String know(@RequestParam(value = "dirPath", defaultValue = "", required = false) String dirPath, @RequestParam(value = "knowledge") String knowledgeName) {
+    @GetMapping("/add")
+    public String know(@RequestParam(value = "dirPath", defaultValue = "/home/jess/data/") String dirPath, @RequestParam(value = "knowledge",defaultValue = "jess") String knowledgeName) {
         Integer i = knowService.addKnowledge(knowledgeName, dirPath);
         log.info("Added {} embeddings", i);
 
