@@ -20,7 +20,7 @@ public class KnowController {
     Assistant assistant;
 
     @GetMapping("/add")
-    public String know(@RequestParam(value = "dirPath", defaultValue = "/home/jess/data/") String dirPath, @RequestParam(value = "knowledge",defaultValue = "jess") String knowledgeName) {
+    public String know(@RequestParam(value = "dirPath", defaultValue = "/home/jess/data/") String dirPath, @RequestParam(value = "knowledge",defaultValue = "jessyyds2") String knowledgeName) {
         Integer i = knowService.addKnowledge(knowledgeName, dirPath);
         log.info("Added {} embeddings", i);
 

@@ -21,12 +21,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 public class MyConfiguration {
 
     private static final String CHROMA_BASE_URL = "http://localhost:8001";
-    private static final String OLLAMA_BASE_URL = "http://localhost:11434";
+    private static final String OLLAMA_BASE_URL = "http://10.1.242.12:11434";
+//    private static final String modelName = "gemma:2b";
+    private static final String modelName = "llama3:70b-instruct";
 
     /**
      * This chat memory will be used by an {@link Assistant}
@@ -49,22 +53,28 @@ public class MyConfiguration {
         return OllamaEmbeddingModel.builder()
                 .baseUrl(OLLAMA_BASE_URL)
                 .modelName("mxbai-embed-large:latest")
-                .timeout(Duration.ofMinutes(1))
+                .timeout(Duration.ofMinutes(2))
                 .maxRetries(3)
                 .build();
     }
 
     @Bean
     ChatLanguageModel chatLanguageModel(){
-        return OllamaChatModel.builder().baseUrl(OLLAMA_BASE_URL).modelName("gemma:2b").build();
+        return OllamaChatModel.builder().baseUrl(OLLAMA_BASE_URL).modelName(modelName).build();
     }
     @Bean
     StreamingChatLanguageModel streamingChatLanguageModel(){
+
+        Map<String,String> map = new HashMap<>();
+        map.put("keep_alive","10");
+
         return OllamaStreamingChatModel.builder().
                 baseUrl(OLLAMA_BASE_URL)
-                .modelName("gemma:2b")
+                .modelName(modelName)
+                .customHeaders(map)
                 .seed(111)
                 .temperature(0.0)
+                .timeout(Duration.ofSeconds(60))
                 .build();
     }
 
@@ -92,6 +102,5 @@ public class MyConfiguration {
     PersistentChatMemoryStore persistentChatMemoryStore (){
         return new PersistentChatMemoryStore();
     }
-    public static int count=0;
 
 }

@@ -18,7 +18,7 @@ import dev.langchain4j.rag.content.injector.ContentInjector;
 import dev.langchain4j.rag.content.injector.DefaultContentInjector;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
+import dev.langchain4j.rag.query.transformer.CompressingQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
@@ -62,8 +62,8 @@ public class ChatController {
     private static ConcurrentHashMap<String, StreamAssistant> assistantMap = new ConcurrentHashMap<>();
 
     @GetMapping("/know")
-    public String ragApp(@RequestParam(value = "knowledgeName", defaultValue = "jess") String knowledgeName,
-                         @RequestParam(value = "userMessage", defaultValue = "作者是谁？") String userMessage,
+    public String ragApp(@RequestParam(value = "knowledgeName", defaultValue = "jessyyds2") String knowledgeName,
+                         @RequestParam(value = "userMessage", defaultValue = "刘晓丹是谁？") String userMessage,
                          @RequestParam(value = "chatUUID", defaultValue = "uuid") String chatUUID) {
 
         StreamAssistant assistant = null;
@@ -74,7 +74,8 @@ public class ChatController {
            assistantMap.put(chatUUID,assistant);
        }
         TokenStream chat = assistant.chat(chatUUID,userMessage);
-        chat.onNext(System.out::println).onComplete(System.out::println).onError(System.err::println).start();
+
+        chat.onNext(System.out::println).onComplete(System.out::println).ignoreErrors().start();
 
         return "success";
 
@@ -97,14 +98,19 @@ public class ChatController {
 
         // 创建了一个 QueryTransformer，用于压缩和优化用户的查询消息 userMessage。CompressingQueryTransformer
         // 使用了一个语言模型 chatLanguageModel。然后将用户的消息转换为查询对象 query 并进行转换。
-        QueryTransformer queryTransformer = new ExpandingQueryTransformer(chatLanguageModel);
+        QueryTransformer queryTransformer = new CompressingQueryTransformer(chatLanguageModel);
+//        Query query = new Query(userMessage);
+//        Collection<Query> transform = queryTransformer.transform(query);
+//        log.info(transform.toString());
 //        Function<Query, Filter> filterByUserId =
-//                (query) -> metadataKey("userId").isEqualTo(query.metadata().chatMemoryId().toString());
+//                (query2) -> metadataKey("userId").isEqualTo(query2.metadata().chatMemoryId().toString());
 
 //        Function<Query, Double> dynamicMinScore = (query) -> {
 //            // 根据用户的查询消息 userMessage 和 embeddingMatches，计算一个动态的最小得分。
 //            // 如果用户消息包含"降维"，则最小得分为0.6；否则为0.3。
-//            if (userMessage.)) {
+//
+//            query.metadata().chatMemory().
+//            if (userMessage)) {
 //                return 0.6;
 //            } else {
 //                return 0.3;
@@ -121,8 +127,8 @@ public class ChatController {
                 .embeddingModel(embeddingModel)
 //                .dynamicFilter(filterByUserId)
 //                .dynamicMinScore()
-                .maxResults(5)
-                .minScore(0.6)
+                .maxResults(1)
+                .minScore(0.8)
                 .build();
 
 //        ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
@@ -244,21 +250,32 @@ public class ChatController {
 
     }
 
-    @GetMapping("/streamChatModel")
-    public String  streamChatModel(@RequestParam(value = "userMessage", defaultValue = "降维是什么？") String userMessage,@RequestParam(value = "chatUUID", defaultValue = "uuid") String chatUUID) {
-        StreamAssistant assistant=null;
+    @GetMapping("/streamChatModel2")
+    public String  streamChatModel(@RequestParam(value = "userMessage", defaultValue = "降维是什么？") String userMessage,@RequestParam(value = "chatUUID", defaultValue = "uuidChat") String chatUUID) throws InterruptedException {
+        StreamAssistant streamAssistant=null;
 
-        if(assistantMap.contains(chatUUID)) {
-            assistant = assistantMap.get(chatUUID);
+        ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
+                .id(memoryId)
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
+
+        if(assistantMap.containsKey(chatUUID)) {
+            streamAssistant = assistantMap.get(chatUUID);
         }else {
-            assistant=AiServices.builder(StreamAssistant.class)
-                    .streamingChatLanguageModel(streamingChatModel)
-                    .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
-                    .build();
+//            assistant=AiServices.builder(StreamAssistant.class)
+//                    .streamingChatLanguageModel(streamingChatModel)
+//                    .chatMemoryProvider(chatMemoryProvider)
+//                    .build();
+            streamAssistant = AiServices.create(StreamAssistant.class, streamingChatModel);
+            assistantMap.put(chatUUID,streamAssistant);
         }
 
-        TokenStream chat = assistant.chat(chatUUID, userMessage);
-        chat.onNext(token -> log.info(token)).onComplete((response) -> log.info("Chat completed"+response.toString())).onError(t -> log.error("Chat failed", t));
+        TokenStream chat = streamAssistant.chatModel(chatUUID, userMessage);
+//        chat.onNext(System.out::println).onComplete((response) -> log.info("Chat completed"+response.toString())).onError(t -> log.error("Chat failed", t));
+        chat.onNext(System.out::println);
+
+//        Thread.sleep(50000);
         return "success";
 
 
